@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "model-distillery"
+version = "0.1.0"
+description = "End-to-end model distillation pipeline: synthetic SFT generation, quality filtering, QLoRA training, quantization, evaluation and serving configs."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Akshay John Xavier" }]
+keywords = ["distillation", "qlora", "minhash", "llm", "fine-tuning"]
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "pydantic>=2.5",
+    "pydantic-settings>=2.2",
+    "pytest>=8.0",
+    "httpx>=0.27",
+    "pyyaml>=6.0",
+    "numpy>=1.26",
+    "ruff>=0.4",
+]
+
+[project.optional-dependencies]
+# Heavy training stack. Lazily imported; every code path degrades gracefully
+# without it (plan mode, offline pipeline and all tests run on the stdlib).
+torch = [
+    "torch>=2.2",
+    "transformers>=4.41",
+    "peft>=0.11",
+    "accelerate>=0.30",
+    "bitsandbytes>=0.43",
+    "datasets>=2.19",
+]
+serve = ["fastapi>=0.110", "uvicorn>=0.29"]
+
+[project.scripts]
+distillery = "distillery.cli:main"
+
+[project.urls]
+Repository = "https://github.com/AkshayJohn03/Model-Distillery"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/distillery"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

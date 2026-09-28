@@ -1,0 +1,15 @@
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF", "BLE"]
+ignore = [
+    # Docstrings and markdown-embedded command tables occasionally exceed 100 chars;
+    # code lines are kept short manually.
+    "E501",
+    # Defensive broad excepts are permitted only at IO/service boundaries (HTTP
+    # client calls, CLI entrypoint) where arbitrary backend failures are converted
+    # into typed DistilleryError subclasses. Everywhere else exception handling is
+    # specific (ImportError, KeyError, httpx.HTTPError, json.JSONDecodeError...).
+    "BLE001",
+]
