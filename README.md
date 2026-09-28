@@ -6,6 +6,19 @@ The repo is built around one uncomfortable production truth: **a frontier teache
 
 Runs fully offline out of the box (`--offline` mode uses a deterministic mock teacher — no GPU, no API keys), and swaps to any OpenAI-compatible endpoint (vLLM, Ollama, OpenAI) for real runs.
 
+## 🟢 New to AI? Read this first
+
+**The problem, in human terms.** The biggest AI models are brilliant and shockingly expensive — imagine paying a world-class surgeon's hourly rate to ask someone for directions. Most everyday questions don't need the surgeon. But if you replace them with a cheap junior, quality collapses — unless the junior was **trained by watching the surgeon work**.
+
+**What this project does.** Model-Distillery is that training program, end to end:
+
+1. **Generate the textbook** — the big ("teacher") model answers thousands of prompts across six skill areas, written in different personas and styles so the lessons don't all look the same.
+2. **Remove the junk** — near-identical answers are detected with a fingerprinting technique (MinHash) so one lesson isn't counted twenty times; broken or repetitive answers are filtered; a rejection step keeps only the best answer per question; and a 13-gram decontamination screen makes sure no exam question leaked into the textbook (otherwise the student's exam results would be a lie).
+3. **Train the apprentice** — a recipe (QLoRA: train a small set of adapter weights on a memory-compressed base model, so a single GPU suffices) is emitted; without a GPU the pipeline produces a **costed training plan** instead — steps, memory, GPU-hours.
+4. **Grade the apprentice against the master** — an exam compares student vs teacher per skill area, and a cost table shows exactly what you saved and when the training pays for itself at your monthly volume.
+
+**Measured outcomes:** 114 automated tests pass offline in ~4.5s — including a hand-computed validation of the knowledge-distillation loss (the exact math a teacher's-grades-soften-a-student's-mistakes trainer uses), the fingerprint dedup catching planted near-duplicates, the leak screen catching a planted overlap, and a fully deterministic offline run: **122 candidates → 59 kept after quality gates → 46/12 train/val split → 68.6% retention**, byte-identical across runs. The two bugs the pipeline caught in its own data during the build are documented — that's the point of measurable gates.
+
 ```mermaid
 flowchart LR
     subgraph Generation["1-2. Teacher layer"]
