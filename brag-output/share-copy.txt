@@ -1,0 +1,6 @@
+Most questions don't need the surgeon — but the junior needs training.
+Model-Distillery, explained on one whiteboard: the teacher writes the
+textbook, MinHash + rejection sampling keep 59 of 122 answers, the 13-gram
+screen keeps the exam out, QLoRA trains the apprentice on one GPU — and the
+exam says 68.6% retention at $616.50/mo saved, breakeven in about 3 days.
+Measurable, auditable, byte-identical.

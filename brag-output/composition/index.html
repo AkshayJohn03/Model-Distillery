@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Model-Distillery — a whiteboard lecture</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      /* OS-bundled Windows fonts: local() declaration satisfies the renderer */
+      @font-face { font-family: "Segoe Print"; src: local("Segoe Print"); }
+      @font-face { font-family: "Comic Sans MS"; src: local("Comic Sans MS"); }
+      html, body {
+        margin: 0; width: 1920px; height: 1080px; overflow: hidden;
+        background: #f6f2e8;
+      }
+      #root {
+        position: relative; width: 100%; height: 100%; overflow: hidden;
+        font-family: "Segoe UI", Arial, sans-serif; color: #23272e;
+      }
+      .marker { font-family: "Segoe Print", "Comic Sans MS", cursive; }
+
+      /* persistent whiteboard chrome */
+      #board {
+        position: absolute; inset: 0;
+        background:
+          radial-gradient(ellipse at center, rgba(0,0,0,0) 62%, rgba(35,39,46,0.07) 100%),
+          repeating-linear-gradient(0deg, transparent 0 63px, rgba(29,78,216,0.055) 63px 65px),
+          repeating-linear-gradient(90deg, transparent 0 63px, rgba(29,78,216,0.055) 63px 65px),
+          #f6f2e8;
+      }
+      #chrome-top {
+        position: absolute; top: 0; left: 0; width: 1920px; height: 96px;
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0 120px; border-bottom: 3px solid rgba(35,39,46,0.14);
+      }
+      #chrome-title { font-size: 30px; color: #23272e; }
+      #chrome-title .accent { color: #1d4ed8; }
+      #dots { display: flex; gap: 14px; }
+      #dots .dot {
+        width: 18px; height: 18px; border-radius: 50%;
+        border: 3px solid #23272e; background: #ffffff;
+      }
+      #progress {
+        position: absolute; left: 120px; bottom: 34px; width: 1680px; height: 10px;
+        background: rgba(35,39,46,0.12); border-radius: 6px;
+      }
+      #progress-fill {
+        position: absolute; inset: 0; background: #1d4ed8; border-radius: 6px;
+      }
+
+      /* scenes */
+      .scene { position: absolute; inset: 0; }
+
+      .kicker {
+        position: absolute; font-size: 29px; color: #ffffff;
+        background: #1d4ed8; padding: 8px 24px 10px;
+        border-radius: 14px 16px 12px 18px;
+        box-shadow: 4px 5px 0 rgba(35,39,46,0.15);
+      }
+      .sketch {
+        position: absolute; background: #ffffff;
+        border: 3px solid #23272e; border-radius: 16px 20px 14px 22px;
+        box-shadow: 4px 5px 0 rgba(35,39,46,0.12); padding: 18px 24px;
+      }
+      .sketch .h { font-size: 30px; color: #23272e; }
+      .sketch .sub { font-size: 22px; color: #4a4f58; margin-top: 4px; }
+      .sketch .blue { color: #1d4ed8; }
+      .stripes {
+        background:
+          repeating-linear-gradient(45deg, #ffffff 0 14px, #ede8da 14px 20px);
+      }
+      .defcard {
+        position: absolute; background: #ffffff;
+        border: 3px solid #23272e; border-radius: 14px 18px 12px 18px;
+        box-shadow: 4px 5px 0 rgba(35,39,46,0.12); padding: 14px 20px 12px;
+      }
+      .defcard .kw { font-size: 27px; color: #1d4ed8; margin-bottom: 4px; }
+      .defcard .df { font-size: 22px; line-height: 1.32; color: #23272e; }
+      .defcard.compact { padding: 12px 16px 10px; }
+      .defcard.compact .kw { font-size: 22px; }
+      .defcard.compact .df { font-size: 19px; line-height: 1.3; }
+      .defcard.warn { border-color: #c2410c; }
+      .defcard.warn .kw { color: #c2410c; }
+      .stamp {
+        position: absolute; font-size: 42px; color: #c2410c;
+        border: 4px solid #c2410c; padding: 6px 22px 10px;
+        border-radius: 12px; background: #ffffff;
+        box-shadow: 4px 5px 0 rgba(35,39,46,0.12);
+      }
+      .stamp.good { color: #15803d; border-color: #15803d; }
+      .stamp.blue { color: #1d4ed8; border-color: #1d4ed8; }
+      .note {
+        position: absolute; font-size: 26px; color: #23272e;
+      }
+      .big { font-size: 64px; color: #23272e; }
+      .title-u { border-bottom: 7px solid #1d4ed8; padding-bottom: 8px; }
+      .arrow-h {
+        position: absolute; height: 0; border-top: 4px solid #23272e;
+      }
+      .arrow-h::after {
+        content: ""; position: absolute; right: -4px; top: -9px;
+        border-left: 16px solid #23272e;
+        border-top: 8px solid transparent; border-bottom: 8px solid transparent;
+      }
+      .chip {
+        display: inline-block; border: 2px solid #23272e; border-radius: 10px;
+        padding: 4px 12px 6px; font-size: 19px; margin: 6px 8px 0 0;
+        background: #f6f2e8; color: #23272e;
+      }
+      .chip.on { background: #1d4ed8; color: #ffffff; border-color: #1d4ed8; }
+      .bar {
+        height: 10px; border-radius: 5px; background: #cfc8b8; margin: 8px 0;
+      }
+      .bar.hl { background: #fde047; }
+
+      /* scene 8 table */
+      .tbl { position: absolute; }
+      .tbl .tr {
+        display: flex; align-items: center; border-bottom: 3px solid rgba(35,39,46,0.25);
+        height: 74px;
+      }
+      .tbl .tr.head { font-size: 24px; color: #1d4ed8; border-bottom: 4px solid #23272e; }
+      .tbl .c1 { width: 360px; font-size: 26px; }
+      .tbl .c2, .tbl .c3 { width: 240px; font-size: 26px; text-align: right; padding-right: 12px; }
+      .tbl .head .c2 { color: #1d4ed8; }
+      .tbl .head .c3 { color: #c2410c; }
+      .tbl .win { color: #15803d; }
+      .tbl .footnote { font-size: 20px; color: #4a4f58; margin-top: 10px; }
+
+      /* scene 10 recap */
+      .recap-row {
+        position: absolute; display: flex; align-items: center; gap: 24px;
+      }
+      .recap-row .num {
+        width: 64px; height: 64px; border-radius: 50%; flex: 0 0 64px;
+        border: 4px solid #1d4ed8; color: #1d4ed8; font-size: 32px;
+        display: flex; align-items: center; justify-content: center;
+        background: #ffffff;
+      }
+      .recap-row .txt { font-size: 31px; color: #23272e; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="415.6"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div id="board"></div>
+
+      <header id="chrome-top">
+        <div id="chrome-title" class="marker">Model-Distillery <span class="accent">· a whiteboard lecture</span></div>
+        <div id="dots"></div>
+      </header>
+      <div id="progress"><div id="progress-fill"></div></div>
+
+      <!-- SCENE 1 — the problem -->
+      <section id="s1" class="clip scene" data-start="0" data-duration="38.0" data-track-index="0">
+        <div class="kicker marker" data-t="0.4" data-fx="pop" style="left:120px; top:118px;" data-tilt="-1">The problem</div>
+        <div class="sketch" data-t="0.6" data-fx="card" style="left:120px; top:220px; width:600px;" data-tilt="-0.6">
+          <div class="h marker">WORLD-CLASS SURGEON</div>
+          <div class="marker blue" style="font-size:58px; margin:10px 0 8px;">$4,000 / hr</div>
+          <div class="sub">one question: "how do I get to the train station?"</div>
+        </div>
+        <div class="note marker" data-t="2.4" data-fx="card" style="left:120px; top:570px; width:560px; font-size:28px;" data-tilt="0.8">"most software asks the surgeon every single day…"</div>
+        <div class="defcard" data-t="19.5" data-fx="card" style="left:900px; top:170px; width:800px;" data-tilt="0.5">
+          <div class="kw marker">distillation</div>
+          <div class="df">Training a small, cheap model to behave like a large, expensive one — by learning from its outputs.</div>
+        </div>
+        <div class="defcard" data-t="22.0" data-fx="card" style="left:900px; top:370px; width:800px;" data-tilt="-0.4">
+          <div class="kw marker">teacher model</div>
+          <div class="df">The big, expensive model whose answers you copy. Brilliant — billed like a specialist.</div>
+        </div>
+        <div class="defcard" data-t="24.4" data-fx="card" style="left:900px; top:560px; width:800px;" data-tilt="0.6">
+          <div class="kw marker">student model</div>
+          <div class="df">The small model you own and serve, trained by imitating the teacher.</div>
+        </div>
+        <div class="big marker title-u" data-t="28.4" data-fx="pop" style="left:0; top:830px; width:1920px; text-align:center;" data-tilt="0">Model-Distillery</div>
+      </section>
+
+      <!-- SCENE 2 — the core idea -->
+      <section id="s2" class="clip scene" data-start="38.0" data-duration="26.0" data-track-index="1">
+        <div class="kicker marker" data-t="0.3" data-fx="pop" style="left:120px; top:118px;" data-tilt="-1">The core idea</div>
+        <div class="note marker" data-t="4.0" data-fx="card" style="left:120px; top:190px; width:1500px; font-size:38px;" data-tilt="-0.3">Train a junior chef by watching the master cook.</div>
+        <div class="sketch" data-t="7.3" data-fx="card" style="left:140px; top:320px; width:340px; height:200px;" data-tilt="-0.5">
+          <div class="h marker">TEACHER</div>
+          <div class="sub">the master — writes worked answers</div>
+        </div>
+        <div class="arrow-h" data-t="10.4" data-fx="draw" style="left:492px; top:418px; width:56px;"></div>
+        <div class="sketch" data-t="11.0" data-fx="card" style="left:560px; top:320px; width:340px; height:200px;" data-tilt="0.5">
+          <div class="h marker">TEXTBOOK</div>
+          <div class="sub">thousands of examples</div>
+        </div>
+        <div class="arrow-h" data-t="13.2" data-fx="draw" style="left:912px; top:418px; width:56px;"></div>
+        <div class="sketch" data-t="13.7" data-fx="card" style="left:980px; top:320px; width:340px; height:200px;" data-tilt="-0.5">
+          <div class="h marker">STUDENT</div>
+          <div class="sub">the apprentice — studies</div>
+        </div>
+        <div class="arrow-h" data-t="16.0" data-fx="draw" style="left:1332px; top:418px; width:56px;"></div>
+        <div class="sketch" data-t="16.4" data-fx="card" style="left:1400px; top:320px; width:340px; height:200px;" data-tilt="0.5">
+          <div class="h marker">EXAM</div>
+          <div class="sub">same questions, graded side by side</div>
+        </div>
+        <div id="stagemap" data-t="22.4" data-fx="fade" style="position:absolute; left:120px; top:660px; width:1680px;">
+          <div style="position:absolute; left:0; top:24px; width:1680px; height:0; border-top:4px solid #23272e;"></div>
+          <div style="position:relative; display:flex; justify-content:space-between; padding:0 40px;">
+            <div style="text-align:center;"><div style="width:52px;height:52px;border-radius:50%;background:#1d4ed8;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;margin:0 auto;border:3px solid #23272e;">1</div><div class="marker" style="font-size:21px;margin-top:8px;">textbook</div></div>
+            <div style="text-align:center;"><div style="width:52px;height:52px;border-radius:50%;background:#1d4ed8;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;margin:0 auto;border:3px solid #23272e;">2</div><div class="marker" style="font-size:21px;margin-top:8px;">dedup</div></div>
+            <div style="text-align:center;"><div style="width:52px;height:52px;border-radius:50%;background:#1d4ed8;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;margin:0 auto;border:3px solid #23272e;">3</div><div class="marker" style="font-size:21px;margin-top:8px;">gates</div></div>
+            <div style="text-align:center;"><div style="width:52px;height:52px;border-radius:50%;background:#1d4ed8;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;margin:0 auto;border:3px solid #23272e;">4</div><div class="marker" style="font-size:21px;margin-top:8px;">decontam</div></div>
+            <div style="text-align:center;"><div style="width:52px;height:52px;border-radius:50%;background:#1d4ed8;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;margin:0 auto;border:3px solid #23272e;">5</div><div class="marker" style="font-size:21px;margin-top:8px;">split</div></div>
+            <div style="text-align:center;"><div style="width:52px;height:52px;border-radius:50%;background:#1d4ed8;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;margin:0 auto;border:3px solid #23272e;">6</div><div class="marker" style="font-size:21px;margin-top:8px;">plan</div></div>
+            <div style="text-align:center;"><div style="width:52px;height:52px;border-radius:50%;background:#1d4ed8;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;margin:0 auto;border:3px solid #23272e;">7</div><div class="marker" style="font-size:21px;margin-top:8px;">train</div></div>
+            <div style="text-align:center;"><div style="width:52px;height:52px;border-radius:50%;background:#1d4ed8;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;margin:0 auto;border:3px solid #23272e;">8</div><div class="marker" style="font-size:21px;margin-top:8px;">exam</div></div>
+            <div style="text-align:center;"><div style="width:52px;height:52px;border-radius:50%;background:#1d4ed8;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;margin:0 auto;border:3px solid #23272e;">9</div><div class="marker" style="font-size:21px;margin-top:8px;">ledger</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCENE 3 — generate the textbook -->
+      <section id="s3" class="clip scene" data-start="64.0" data-duration="44.8" data-track-index="2">
+        <div class="kicker marker" data-t="0.5" data-fx="pop" style="left:120px; top:118px;" data-tilt="-1">Stage 1 — generate the textbook</div>
+        <div class="sketch" data-t="3.0" data-fx="card" style="left:120px; top:210px; width:540px;" data-tilt="-0.5">
+          <div class="h marker">PROMPT POOL</div>
+          <div class="sub">61 prompts · 6 skills</div>
+          <div style="margin-top:10px;">
+            <span class="chip on">classification</span><span class="chip">coding</span><span class="chip">extraction</span><span class="chip">reasoning</span><span class="chip">safety-refusal</span><span class="chip">summarization</span>
+          </div>
+        </div>
+        <div class="sketch" data-t="9.0" data-fx="card" style="left:710px; top:210px; width:560px;" data-tilt="0.4">
+          <div class="h marker">PERSONA GRID</div>
+          <div class="sub">persona × temperature × seed</div>
+          <div class="sub">k = 2 candidates per prompt</div>
+        </div>
+        <div class="sketch" data-t="15.5" data-fx="card" style="left:1320px; top:210px; width:460px; text-align:center;" data-tilt="0.8">
+          <div class="h marker">CANDIDATES</div>
+          <div class="marker" id="counter" style="font-size:96px; color:#1d4ed8;">0</div>
+        </div>
+        <div class="defcard" data-t="19.0" data-fx="card" style="left:120px; top:560px; width:540px;" data-tilt="-0.4">
+          <div class="kw marker">temperature</div>
+          <div class="df">The randomness dial: higher means more varied answers.</div>
+        </div>
+        <div class="defcard" data-t="22.0" data-fx="card" style="left:710px; top:560px; width:540px;" data-tilt="0.5">
+          <div class="kw marker">seed</div>
+          <div class="df">Fixed randomness — same seed, same answer, every single run.</div>
+        </div>
+        <div class="defcard" data-t="25.0" data-fx="card" style="left:1300px; top:560px; width:480px;" data-tilt="-0.5">
+          <div class="kw marker">SFT (supervised fine-tuning)</div>
+          <div class="df">Training on plain pairs: prompt in, answer out.</div>
+        </div>
+        <div class="defcard" data-t="29.0" data-fx="card" style="left:120px; top:800px; width:540px;" data-tilt="0.4">
+          <div class="kw marker">chat JSONL</div>
+          <div class="df">One JSON chat record per line — appendable, greppable, auditable.</div>
+        </div>
+        <div class="defcard" data-t="33.5" data-fx="card" style="left:710px; top:800px; width:540px;" data-tilt="-0.5">
+          <div class="kw marker">chain-of-thought</div>
+          <div class="df">Show your working — the reasoning steps are written before the answer.</div>
+        </div>
+        <div class="note marker" data-t="37.5" data-fx="card" style="left:1320px; top:810px; width:460px; font-size:28px;" data-tilt="0.6">in a textbook, the steps are the lesson</div>
+      </section>
+
+      <!-- SCENE 4 — dedup -->
+      <section id="s4" class="clip scene" data-start="108.8" data-duration="44.7" data-track-index="3">
+        <div class="kicker marker" data-t="0.5" data-fx="pop" style="left:120px; top:118px;" data-tilt="-1">Stage 2 — remove the junk</div>
+        <div class="sketch" data-t="3.0" data-fx="card" style="left:120px; top:220px; width:300px;" data-tilt="-1">
+          <div class="h marker" style="font-size:24px;">answer A</div>
+          <div class="bar" style="width:90%;"></div><div class="bar" style="width:95%;"></div><div class="bar" style="width:85%;"></div><div class="bar" style="width:92%;"></div>
+          <div class="chip">fp 9f2a…</div>
+        </div>
+        <div class="sketch" data-t="3.4" data-fx="card" style="left:470px; top:220px; width:300px;" data-tilt="1">
+          <div class="h marker" style="font-size:24px;">answer A′</div>
+          <div class="bar" style="width:92%;"></div><div class="bar" style="width:90%;"></div><div class="bar" style="width:88%;"></div><div class="bar" style="width:93%;"></div>
+          <div class="chip">fp 9f2b…</div>
+        </div>
+        <div class="sketch" data-t="19.0" data-fx="card" style="left:830px; top:220px; width:320px;" data-tilt="0.5">
+          <div class="h marker" style="font-size:24px;">LSH bucket</div>
+          <div class="sub">same bucket = worth comparing</div>
+        </div>
+        <div class="arrow-h" data-t="31.5" data-fx="draw" style="left:1180px; top:320px; width:56px;"></div>
+        <div class="sketch" data-t="32.0" data-fx="card" style="left:1260px; top:220px; width:300px;" data-tilt="-0.8">
+          <div class="h marker" style="font-size:24px;">survivor</div>
+          <div class="sub">one canonical answer</div>
+        </div>
+        <div class="note marker" data-t="24.0" data-fx="card" style="left:830px; top:400px; width:400px; font-size:28px; color:#15803d;" data-tilt="-0.4">Jaccard ≥ 0.8 — verified exactly</div>
+        <div class="note marker" data-t="29.5" data-fx="card" style="left:830px; top:470px; width:400px; font-size:28px;" data-tilt="0.5">union-find collapses the cluster</div>
+        <div class="defcard" data-t="13.5" data-fx="card" style="left:120px; top:560px; width:540px;" data-tilt="0.4">
+          <div class="kw marker">MinHash</div>
+          <div class="df">A fingerprint with a property: similar texts get similar signatures.</div>
+        </div>
+        <div class="defcard" data-t="6.0" data-fx="card" style="left:710px; top:560px; width:540px;" data-tilt="-0.4">
+          <div class="kw marker">near-duplicate detection</div>
+          <div class="df">Finding answers that are almost identical — the copies exact hashing can't see.</div>
+        </div>
+        <div class="defcard" data-t="19.5" data-fx="card" style="left:1300px; top:560px; width:480px;" data-tilt="0.5">
+          <div class="kw marker">LSH (locality-sensitive hashing)</div>
+          <div class="df">Buckets the fingerprints so similar ones meet — no all-pairs comparison.</div>
+        </div>
+        <div class="defcard" data-t="24.5" data-fx="card" style="left:120px; top:800px; width:540px;" data-tilt="-0.5">
+          <div class="kw marker">Jaccard similarity</div>
+          <div class="df">Shared pieces ÷ total pieces. Threshold 0.8, verified exactly.</div>
+        </div>
+        <div class="defcard" data-t="30.0" data-fx="card" style="left:710px; top:800px; width:540px;" data-tilt="0.4">
+          <div class="kw marker">union-find</div>
+          <div class="df">Collapses each duplicate cluster down to one canonical survivor.</div>
+        </div>
+        <div class="stamp marker" data-t="39.5" data-fx="pop" style="left:1330px; top:830px;" data-tilt="-4">−13 duplicates</div>
+      </section>
+
+      <!-- SCENE 5 — quality gates -->
+      <section id="s5" class="clip scene" data-start="153.5" data-duration="39.7" data-track-index="4">
+        <div class="kicker marker" data-t="0.5" data-fx="pop" style="left:120px; top:118px;" data-tilt="-1">Stage 3 — quality gates</div>
+        <div class="sketch" data-t="2.0" data-fx="card" style="left:140px; top:200px; width:560px; text-align:center;" data-tilt="-0.4">
+          <div class="h marker">122 candidates</div>
+        </div>
+        <div class="arrow-h" data-t="3.5" data-fx="draw" style="left:400px; top:290px; width:40px;"></div>
+        <div class="sketch" data-t="4.0" data-fx="card" style="left:200px; top:330px; width:440px; text-align:center;" data-tilt="0.4">
+          <div class="h marker">rule gate</div>
+          <div class="sub">length · repetition · language</div>
+        </div>
+        <div class="stamp marker" data-t="5.2" data-fx="pop" style="left:680px; top:340px; font-size:34px;" data-tilt="-5">−8 rules</div>
+        <div class="arrow-h" data-t="8.5" data-fx="draw" style="left:400px; top:440px; width:40px;"></div>
+        <div class="sketch" data-t="9.0" data-fx="card" style="left:260px; top:470px; width:320px; text-align:center;" data-tilt="-0.4">
+          <div class="h marker">best-of-k</div>
+          <div class="sub">keep the best answer</div>
+        </div>
+        <div class="stamp marker" data-t="12.5" data-fx="pop" style="left:620px; top:470px; font-size:34px;" data-tilt="4">−42 rejection</div>
+        <div class="sketch" data-t="33.0" data-fx="card" style="left:300px; top:610px; width:240px; text-align:center; border-color:#15803d;" data-tilt="0.6">
+          <div class="h marker" style="color:#15803d;">59 kept</div>
+        </div>
+        <div class="defcard" data-t="2.5" data-fx="card" style="left:1000px; top:170px; width:780px;" data-tilt="0.5">
+          <div class="kw marker">quality filter</div>
+          <div class="df">Deterministic rules first: too short, too long, repeated lines, wrong language.</div>
+        </div>
+        <div class="defcard" data-t="9.0" data-fx="card" style="left:1000px; top:340px; width:780px;" data-tilt="-0.4">
+          <div class="kw marker">rejection sampling</div>
+          <div class="df">Generate k candidates, keep the best, discard the rest.</div>
+        </div>
+        <div class="defcard" data-t="15.0" data-fx="card" style="left:1000px; top:500px; width:780px;" data-tilt="0.4">
+          <div class="kw marker">discard histogram</div>
+          <div class="df">A receipt for every deletion — 8 by the repetition rule, 42 by rejection.</div>
+        </div>
+        <div class="defcard warn" data-t="21.0" data-fx="card" style="left:1000px; top:660px; width:780px;" data-tilt="-0.5">
+          <div class="kw marker">Goodhart's law</div>
+          <div class="df">A measure you optimize against stops measuring. Rules gate validity; the judge only ranks.</div>
+        </div>
+      </section>
+
+      <!-- SCENE 6 — decontamination -->
+      <section id="s6" class="clip scene" data-start="193.2" data-duration="38.4" data-track-index="5">
+        <div class="kicker marker" data-t="0.5" data-fx="pop" style="left:120px; top:118px;" data-tilt="-1">Stage 4 — no exam leaks</div>
+        <div class="sketch" data-t="6.0" data-fx="card" style="left:120px; top:220px; width:460px; height:220px;" data-tilt="-0.8">
+          <div class="h marker">TEXTBOOK</div>
+          <div class="sub">what the student studies</div>
+        </div>
+        <div class="sketch" data-t="8.0" data-fx="card" style="left:120px; top:500px; width:460px; height:220px;" data-tilt="0.6">
+          <div class="h marker">EVAL SET</div>
+          <div class="bar" style="width:88%;"></div><div class="bar hl" style="width:70%;"></div><div class="bar" style="width:80%;"></div>
+          <div class="sub">the exam — held back</div>
+        </div>
+        <div class="defcard warn" data-t="7.0" data-fx="card" style="left:660px; top:200px; width:540px;" data-tilt="0.4">
+          <div class="kw marker">eval contamination</div>
+          <div class="df">Exam questions leaking into the textbook — the student memorizes instead of learning.</div>
+        </div>
+        <div class="defcard" data-t="14.0" data-fx="card" style="left:660px; top:400px; width:540px;" data-tilt="-0.4">
+          <div class="kw marker">13-gram decontamination</div>
+          <div class="df">Any 13-token span shared with the eval set disqualifies the example — a match is never chance.</div>
+        </div>
+        <div class="stamp marker" data-t="24.0" data-fx="pop" style="left:1270px; top:230px; font-size:36px;" data-tilt="-5">leak caught: 1</div>
+        <div class="defcard" data-t="27.5" data-fx="card" style="left:660px; top:640px; width:540px;" data-tilt="0.5">
+          <div class="kw marker">stratified split</div>
+          <div class="df">46 to study, 12 held back for the exam — every skill represented in both.</div>
+        </div>
+        <div class="sketch" data-t="30.5" data-fx="card" style="left:1270px; top:430px; width:230px; text-align:center;" data-tilt="-0.6">
+          <div class="h marker" style="font-size:26px;">46 study</div>
+        </div>
+        <div class="sketch" data-t="30.9" data-fx="card" style="left:1530px; top:430px; width:230px; text-align:center;" data-tilt="0.6">
+          <div class="h marker" style="font-size:26px;">12 exam</div>
+        </div>
+        <div class="note marker" data-t="32.5" data-fx="card" style="left:1270px; top:580px; width:520px; font-size:24px;" data-tilt="0.4">6 skill chips, balanced on both sides</div>
+      </section>
+
+      <!-- SCENE 7 — QLoRA + KD loss -->
+      <section id="s7" class="clip scene" data-start="231.6" data-duration="48.1" data-track-index="6">
+        <div class="kicker marker" data-t="0.5" data-fx="pop" style="left:120px; top:118px;" data-tilt="-1">Stage 5 — train the apprentice</div>
+        <div class="sketch stripes" data-t="12.0" data-fx="card" style="left:120px; top:250px; width:600px; height:150px;" data-tilt="-0.4">
+          <div class="h marker" style="font-size:26px;">BASE — frozen · 4-bit NF4 · double-quant</div>
+        </div>
+        <div class="sketch" data-t="15.0" data-fx="card" style="left:160px; top:170px; width:320px; border-color:#1d4ed8;" data-tilt="0.8">
+          <div class="h marker" style="font-size:24px; color:#1d4ed8;">LoRA r=16 — trains</div>
+        </div>
+        <div class="note marker" data-t="8.0" data-fx="card" style="left:120px; top:430px; font-size:30px; color:#1d4ed8;" data-tilt="-0.5">one GPU suffices</div>
+        <div class="sketch" data-t="21.0" data-fx="card" style="left:800px; top:170px; width:980px;" data-tilt="0.3">
+          <div class="h marker" style="font-size:26px;">training plan — priced before you rent</div>
+          <div class="sub">9 steps · 22,386 tokens · 46 train / 12 val · seed 42</div>
+        </div>
+        <div class="sketch" data-t="28.5" data-fx="card" style="left:800px; top:320px; width:980px;" data-tilt="-0.3">
+          <div class="h marker" style="font-size:36px;">KD loss = T² · KL(student ∥ teacher) + α · CE</div>
+          <div class="sub">α · CE — the ordinary right-answer error, mixed in</div>
+        </div>
+        <div class="stamp good marker" data-t="42.0" data-fx="pop" style="left:1160px; top:470px; font-size:32px;" data-tilt="-3">hand-computed fixture ✓ to 1e-9</div>
+        <div class="defcard compact" data-t="3.0" data-fx="card" style="left:120px; top:620px; width:326px;" data-tilt="-0.4">
+          <div class="kw marker">QLoRA</div>
+          <div class="df">Train a small adapter on a compressed base model — one GPU suffices.</div>
+        </div>
+        <div class="defcard compact" data-t="16.0" data-fx="card" style="left:462px; top:620px; width:326px;" data-tilt="0.4">
+          <div class="kw marker">LoRA adapter</div>
+          <div class="df">r=16 on q/k/v/o — about 0.25% of the parameters, all of the learning.</div>
+        </div>
+        <div class="defcard compact" data-t="12.5" data-fx="card" style="left:804px; top:620px; width:326px;" data-tilt="-0.3">
+          <div class="kw marker">NF4</div>
+          <div class="df">4-bit NormalFloat — a codebook shaped like trained weights.</div>
+        </div>
+        <div class="defcard compact" data-t="13.5" data-fx="card" style="left:1146px; top:620px; width:326px;" data-tilt="0.5">
+          <div class="kw marker">double quantization</div>
+          <div class="df">Even the quantization constants get quantized — ~0.4 bits per param saved.</div>
+        </div>
+        <div class="defcard compact" data-t="30.0" data-fx="card" style="left:1488px; top:620px; width:326px;" data-tilt="-0.5">
+          <div class="kw marker">logit</div>
+          <div class="df">The raw score behind each token's probability.</div>
+        </div>
+        <div class="defcard compact" data-t="29.0" data-fx="card" style="left:120px; top:830px; width:326px;" data-tilt="0.4">
+          <div class="kw marker">KD loss</div>
+          <div class="df">Pull the student's whole distribution toward the teacher's, per token.</div>
+        </div>
+        <div class="defcard compact" data-t="31.5" data-fx="card" style="left:462px; top:830px; width:326px;" data-tilt="-0.4">
+          <div class="kw marker">temperature T</div>
+          <div class="df">Softens the master's grades; T² keeps gradients comparable.</div>
+        </div>
+        <div class="defcard compact" data-t="35.0" data-fx="card" style="left:804px; top:830px; width:326px;" data-tilt="0.5">
+          <div class="kw marker">soft labels</div>
+          <div class="df">The teacher's full probabilities — how sure to be, not just what to say.</div>
+        </div>
+        <div class="defcard compact" data-t="38.5" data-fx="card" style="left:1146px; top:830px; width:326px;" data-tilt="-0.5">
+          <div class="kw marker">KL divergence</div>
+          <div class="df">The distance between two belief distributions — zero when identical.</div>
+        </div>
+        <div class="defcard compact" data-t="21.8" data-fx="card" style="left:1488px; top:830px; width:326px;" data-tilt="0.4">
+          <div class="kw marker">GPU-hours</div>
+          <div class="df">One GPU running for one hour — the unit training is rented in.</div>
+        </div>
+      </section>
+
+      <!-- SCENE 8 — the exam -->
+      <section id="s8" class="clip scene" data-start="279.7" data-duration="45.1" data-track-index="7">
+        <div class="kicker marker" data-t="0.5" data-fx="pop" style="left:120px; top:118px;" data-tilt="-1">Stage 6 — the exam</div>
+        <div class="tbl" style="left:120px; top:210px; width:900px;">
+          <div class="tr head" data-t="4.0" data-fx="fade"><div class="c1 marker">metric</div><div class="c2 marker">student</div><div class="c3 marker">master</div></div>
+          <div class="tr" data-t="11.0" data-fx="fade"><div class="c1 marker">token-F1</div><div class="c2">0.229</div><div class="c3">0.333</div></div>
+          <div class="tr" data-t="15.5" data-fx="fade"><div class="c1 marker">containment</div><div class="c2">0.323</div><div class="c3">0.500</div></div>
+          <div class="tr" data-t="8.5" data-fx="fade"><div class="c1 marker">exact match</div><div class="c2">0.000</div><div class="c3">0.000</div></div>
+          <div class="tr win" data-t="22.5" data-fx="fade"><div class="c1 marker">classification ★</div><div class="c2 win">0.270</div><div class="c3">0.259</div></div>
+          <div class="tr win" data-t="25.5" data-fx="fade"><div class="c1 marker">extraction ★</div><div class="c2 win">0.329</div><div class="c3">0.303</div></div>
+          <div class="tr" data-t="28.0" data-fx="fade"><div class="c1 marker">summarization</div><div class="c2">0.285</div><div class="c3">0.515</div></div>
+          <div class="footnote" data-t="9.5" data-fx="fade">open-ended answers never match verbatim — both score zero</div>
+        </div>
+        <div class="sketch" data-t="31.0" data-fx="pop" style="left:1100px; top:230px; width:340px; height:340px; border-radius:50%; text-align:center; border-color:#15803d; display:flex; flex-direction:column; align-items:center; justify-content:center;" data-tilt="0">
+          <div class="marker" style="font-size:84px; color:#15803d;">68.6%</div>
+          <div class="sub marker" style="font-size:24px;">quality retention</div>
+        </div>
+        <div class="defcard compact" data-t="4.5" data-fx="card" style="left:1500px; top:210px; width:320px;" data-tilt="0.4">
+          <div class="kw marker">exact match</div>
+          <div class="df">1 if identical, else 0 — nothing partial counts.</div>
+        </div>
+        <div class="defcard compact" data-t="11.5" data-fx="card" style="left:1500px; top:380px; width:320px;" data-tilt="-0.4">
+          <div class="kw marker">token-F1</div>
+          <div class="df">Partial credit that punishes both bluffing and omissions.</div>
+        </div>
+        <div class="defcard compact" data-t="16.0" data-fx="card" style="left:1500px; top:550px; width:320px;" data-tilt="0.5">
+          <div class="kw marker">containment</div>
+          <div class="df">How much of the reference's tokens the answer covers.</div>
+        </div>
+        <div class="defcard compact" data-t="19.5" data-fx="card" style="left:1500px; top:720px; width:320px;" data-tilt="-0.5">
+          <div class="kw marker">capability slice</div>
+          <div class="df">The bench, computed per skill — a report card per subject.</div>
+        </div>
+        <div class="stamp good marker" data-t="38.0" data-fx="pop" style="left:120px; top:860px; font-size:32px;" data-tilt="-3">114 tests · under 5 s, offline</div>
+        <div class="stamp blue marker" data-t="39.5" data-fx="pop" style="left:640px; top:860px; font-size:32px;" data-tilt="2">byte-identical runs</div>
+        <div class="note marker" data-t="33.0" data-fx="card" style="left:1100px; top:640px; width:340px; font-size:22px; text-align:center;" data-tilt="0.4">quality retention = student token-F1 ÷ teacher token-F1</div>
+      </section>
+
+      <!-- SCENE 9 — breakeven -->
+      <section id="s9" class="clip scene" data-start="324.8" data-duration="42.2" data-track-index="8">
+        <div class="kicker marker" data-t="0.5" data-fx="pop" style="left:120px; top:118px;" data-tilt="-1">Stage 7 — does it pay?</div>
+        <div class="sketch" data-t="3.0" data-fx="card" style="left:120px; top:200px; width:800px;" data-tilt="-0.4">
+          <div class="h marker" style="font-size:26px;">cost per 1M tokens</div>
+          <div class="sub">teacher $3 in / $15 out · student $0.15 in / $0.60 out</div>
+        </div>
+        <div class="defcard" data-t="3.5" data-fx="card" style="left:980px; top:190px; width:800px;" data-tilt="0.4">
+          <div class="kw marker">cost per 1M tokens</div>
+          <div class="df">The list price per million tokens, split input and output.</div>
+        </div>
+        <div class="sketch" data-t="15.0" data-fx="card" style="left:120px; top:360px; width:800px;" data-tilt="0.3">
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <div class="h marker" style="font-size:26px;">teacher bill — 100k requests/mo</div>
+            <div class="marker" style="font-size:34px; color:#c2410c;">$645.00 /mo</div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:8px;">
+            <div class="h marker" style="font-size:26px;">student bill — same traffic</div>
+            <div class="marker" style="font-size:34px; color:#1d4ed8;">$28.50 /mo</div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:8px; border-top:3px solid rgba(35,39,46,0.25); padding-top:8px;">
+            <div class="h marker" style="font-size:26px; color:#15803d;">savings</div>
+            <div class="marker" style="font-size:38px; color:#15803d;">$616.50 /mo</div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:8px;">
+            <div class="h marker" style="font-size:26px;">one-time investment (gen + train + eval)</div>
+            <div class="marker" style="font-size:30px;">$60.00</div>
+          </div>
+        </div>
+        <div class="defcard" data-t="29.0" data-fx="card" style="left:980px; top:400px; width:800px;" data-tilt="-0.4">
+          <div class="kw marker">breakeven horizon</div>
+          <div class="df">How fast the monthly savings repay the one-time investment.</div>
+        </div>
+        <div class="stamp good marker" data-t="28.5" data-fx="pop" style="left:330px; top:730px; font-size:38px;" data-tilt="-4">breakeven ≈ 3 days</div>
+        <div id="curve" data-t="32.0" data-fx="draw" style="position:absolute; left:980px; top:540px; width:800px; transform-origin:left center;">
+          <svg width="800" height="360" viewBox="0 0 800 360">
+            <line x1="60" y1="320" x2="780" y2="320" stroke="#23272e" stroke-width="4"/>
+            <line x1="60" y1="320" x2="60" y2="20" stroke="#23272e" stroke-width="4"/>
+            <line x1="60" y1="230" x2="780" y2="230" stroke="#c2410c" stroke-width="3" stroke-dasharray="12 10"/>
+            <text x="76" y="222" font-family="Segoe Print, Comic Sans MS, cursive" font-size="22" fill="#c2410c">$60 invested</text>
+            <polyline points="60,318 120,300 180,272 240,240 300,204 360,168 420,132 480,100 540,72 600,48 660,30" fill="none" stroke="#15803d" stroke-width="6" stroke-linecap="round"/>
+            <circle cx="157" cy="230" r="10" fill="#15803d" stroke="#23272e" stroke-width="3"/>
+            <text x="185" y="270" font-family="Segoe Print, Comic Sans MS, cursive" font-size="24" fill="#15803d">breakeven: ~3 days</text>
+            <text x="600" y="352" font-family="Segoe Print, Comic Sans MS, cursive" font-size="20" fill="#4a4f58">volume →</text>
+          </svg>
+        </div>
+        <div class="note marker" data-t="36.0" data-fx="card" style="left:120px; top:880px; width:800px; font-size:26px;" data-tilt="0.4">savings scale with volume; the investment is fixed</div>
+      </section>
+
+      <!-- SCENE 10 — recap -->
+      <section id="s10" class="clip scene" data-start="367.0" data-duration="48.6" data-track-index="9">
+        <div class="kicker marker" data-t="0.5" data-fx="pop" style="left:120px; top:118px;" data-tilt="-1">The 30-second recap</div>
+        <div class="note marker" data-t="1.2" data-fx="card" style="left:120px; top:200px; font-size:36px;" data-tilt="-0.3">repeat this to a colleague —</div>
+        <div class="recap-row" data-t="2.5" data-fx="card" style="left:120px; top:280px; width:1500px;" data-tilt="-0.2">
+          <div class="num marker">1</div><div class="txt">The teacher writes the textbook — a persona grid over a prompt pool.</div>
+        </div>
+        <div class="recap-row" data-t="8.5" data-fx="card" style="left:120px; top:390px; width:1500px;" data-tilt="0.2">
+          <div class="num marker">2</div><div class="txt">Fingerprints, rules and rejection keep 59 of 122. The 13-gram screen keeps the exam out.</div>
+        </div>
+        <div class="recap-row" data-t="14.5" data-fx="card" style="left:120px; top:500px; width:1500px;" data-tilt="-0.2">
+          <div class="num marker">3</div><div class="txt">QLoRA: a small adapter on a compressed base — one GPU.</div>
+        </div>
+        <div class="recap-row" data-t="20.5" data-fx="card" style="left:120px; top:610px; width:1500px;" data-tilt="0.2">
+          <div class="num marker">4</div><div class="txt">The exam: 68.6% retention, graded per skill.</div>
+        </div>
+        <div class="recap-row" data-t="26.5" data-fx="card" style="left:120px; top:720px; width:1500px;" data-tilt="-0.2">
+          <div class="num marker">5</div><div class="txt">The ledger: $616.50 saved a month — breakeven in about 3 days.</div>
+        </div>
+        <div class="sketch" data-t="40.0" data-fx="pop" style="left:120px; top:830px; width:1640px; text-align:center; border-color:#1d4ed8;" data-tilt="0">
+          <div class="h marker" style="font-size:44px;">Model-Distillery — measurable · auditable · byte-identical</div>
+          <div class="sub marker" style="font-size:24px; margin-top:6px;">every keyword, defined — see GLOSSARY.md</div>
+        </div>
+      </section>
+
+      <!-- voiceover: one WAV per scene, scene durations flex to these -->
+      <audio id="vo1"  data-start="0"     data-duration="36.82" data-track-index="3" data-volume="1" src="assets/voiceover/vo-scene01.wav"></audio>
+      <audio id="vo2"  data-start="38.0"  data-duration="24.84" data-track-index="3" data-volume="1" src="assets/voiceover/vo-scene02.wav"></audio>
+      <audio id="vo3"  data-start="64.0"  data-duration="43.65" data-track-index="3" data-volume="1" src="assets/voiceover/vo-scene03.wav"></audio>
+      <audio id="vo4"  data-start="108.8" data-duration="43.48" data-track-index="3" data-volume="1" src="assets/voiceover/vo-scene04.wav"></audio>
+      <audio id="vo5"  data-start="153.5" data-duration="38.48" data-track-index="3" data-volume="1" src="assets/voiceover/vo-scene05.wav"></audio>
+      <audio id="vo6"  data-start="193.2" data-duration="37.16" data-track-index="3" data-volume="1" src="assets/voiceover/vo-scene06.wav"></audio>
+      <audio id="vo7"  data-start="231.6" data-duration="46.89" data-track-index="3" data-volume="1" src="assets/voiceover/vo-scene07.wav"></audio>
+      <audio id="vo8"  data-start="279.7" data-duration="43.90" data-track-index="3" data-volume="1" src="assets/voiceover/vo-scene08.wav"></audio>
+      <audio id="vo9"  data-start="324.8" data-duration="41.04" data-track-index="3" data-volume="1" src="assets/voiceover/vo-scene09.wav"></audio>
+      <audio id="vo10" data-start="367.0" data-duration="45.80" data-track-index="3" data-volume="1" src="assets/voiceover/vo-scene10.wav"></audio>
+
+      <!-- music bed: 117s track looped in 4 segments, stays ducked under the narration, fades out at the end -->
+      <audio
+        id="music-bed-1"
+        data-start="0"
+        data-duration="117.36"
+        data-track-index="10"
+        data-volume="0.13"
+        src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3"
+      ></audio>
+      <audio
+        id="music-bed-2"
+        data-start="117.36"
+        data-duration="117.36"
+        data-track-index="10"
+        data-volume="0.13"
+        src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3"
+      ></audio>
+      <audio
+        id="music-bed-3"
+        data-start="234.72"
+        data-duration="117.36"
+        data-track-index="10"
+        data-volume="0.13"
+        src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3"
+      ></audio>
+      <audio
+        id="music-bed-4"
+        data-start="352.08"
+        data-duration="63.52"
+        data-track-index="10"
+        data-volume="0.13"
+        data-automation='{"version":1,"lanes":[{"target":"volume","points":[{"t":0,"v":0.13},{"t":58.9,"v":0.13},{"t":63.5,"v":0}]}]}'
+        src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3"
+      ></audio>
+
+      <!-- sparse SFX: definition cards and stamps only, never over narration emphasis -->
+      <audio id="sfx1"  data-start="0.6"    data-track-index="11" data-volume="0.4"  src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx2"  data-start="28.4"   data-track-index="12" data-volume="0.4"  src="assets/sfx/interface/drop_002.ogg"></audio>
+      <audio id="sfx3"  data-start="45.3"   data-track-index="13" data-volume="0.4"  src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx4"  data-start="60.4"   data-track-index="14" data-volume="0.45" src="assets/sfx/impact/impactSoft_medium_000.ogg"></audio>
+      <audio id="sfx5"  data-start="67.0"   data-track-index="15" data-volume="0.4"  src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx6"  data-start="80.0"   data-track-index="16" data-volume="0.4"  src="assets/sfx/impact/impactSoft_medium_000.ogg"></audio>
+      <audio id="sfx7"  data-start="97.5"   data-track-index="17" data-volume="0.35" src="assets/sfx/interface/drop_002.ogg"></audio>
+      <audio id="sfx8"  data-start="122.3"  data-track-index="18" data-volume="0.4"  src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx9"  data-start="148.3"  data-track-index="19" data-volume="0.5"  src="assets/sfx/impact/impactSoft_medium_000.ogg"></audio>
+      <audio id="sfx10" data-start="155.5"  data-track-index="20" data-volume="0.4"  src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx11" data-start="186.5"  data-track-index="21" data-volume="0.5"  src="assets/sfx/impact/impactSoft_medium_000.ogg"></audio>
+      <audio id="sfx12" data-start="199.2"  data-track-index="22" data-volume="0.4"  src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx13" data-start="217.2"  data-track-index="23" data-volume="0.5"  src="assets/sfx/impact/impactSoft_medium_000.ogg"></audio>
+      <audio id="sfx14" data-start="243.6"  data-track-index="24" data-volume="0.4"  src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx15" data-start="260.1"  data-track-index="25" data-volume="0.35" src="assets/sfx/interface/drop_002.ogg"></audio>
+      <audio id="sfx16" data-start="273.6"  data-track-index="26" data-volume="0.45" src="assets/sfx/impact/impactSoft_medium_000.ogg"></audio>
+      <audio id="sfx17" data-start="283.7"  data-track-index="27" data-volume="0.4"  src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx18" data-start="310.7"  data-track-index="28" data-volume="0.45" src="assets/sfx/impact/impactSoft_medium_000.ogg"></audio>
+      <audio id="sfx19" data-start="327.8"  data-track-index="29" data-volume="0.4"  src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx20" data-start="353.3"  data-track-index="30" data-volume="0.5"  src="assets/sfx/impact/impactSoft_medium_000.ogg"></audio>
+      <audio id="sfx21" data-start="369.5"  data-track-index="31" data-volume="0.4"  src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx22" data-start="407.0"  data-track-index="32" data-volume="0.45" src="assets/sfx/impact/impactSoft_medium_000.ogg"></audio>
+    </div>
+
+    <script>
+      // Scene start times (voice-driven; scene durations flex to narration WAV lengths)
+      var SCENE_STARTS = {
+        s1: 0.0, s2: 38.0, s3: 64.0, s4: 108.8, s5: 153.5,
+        s6: 193.2, s7: 231.6, s8: 279.7, s9: 324.8, s10: 367.0,
+      };
+      var TOTAL = 415.6;
+
+      // Header progress dots (one per scene)
+      var dotsHost = document.getElementById("dots");
+      var dots = [];
+      for (var i = 0; i < 10; i++) {
+        var d = document.createElement("div");
+        d.className = "dot";
+        dotsHost.appendChild(d);
+        dots.push(d);
+      }
+
+      var tl = gsap.timeline({ paused: true });
+
+      // Progress bar fills over the whole lecture
+      tl.fromTo("#progress-fill", { scaleX: 0 }, { scaleX: 1, duration: TOTAL, ease: "none" }, 0);
+
+      // Dots fill scene by scene
+      Object.keys(SCENE_STARTS).forEach(function (key, idx) {
+        tl.to(dots[idx], { backgroundColor: "#1d4ed8", duration: 0.3, ease: "none" }, SCENE_STARTS[key] + 0.2);
+      });
+
+      // Every timed element: data-t (seconds into its scene) + data-fx (entrance)
+      var counterObj = { v: 0 };
+      var counterEl = document.getElementById("counter");
+
+      document.querySelectorAll("[data-t]").forEach(function (el) {
+        var scene = el.closest(".scene");
+        if (!scene) return;
+        var t = (SCENE_STARTS[scene.id] || 0) + parseFloat(el.dataset.t);
+        var fx = el.dataset.fx;
+        var tilt = el.dataset.tilt ? parseFloat(el.dataset.tilt) : 0;
+
+        if (el === counterEl) {
+          // count 0 -> 122, deterministic function of timeline time
+          tl.to(counterObj,
+            {
+              v: 122, duration: 1.8, ease: "power1.inOut",
+              onUpdate: function () { counterEl.textContent = String(Math.round(counterObj.v)); },
+            },
+            t
+          );
+          return;
+        }
+
+        if (fx === "pop") {
+          tl.fromTo(el,
+            { opacity: 0, scale: 1.8, rotation: tilt },
+            { opacity: 1, scale: 1, rotation: tilt, duration: 0.4, ease: "back.out(2.1)" },
+            t
+          );
+        } else if (fx === "draw") {
+          tl.fromTo(el,
+            { scaleX: 0, rotation: tilt },
+            { scaleX: 1, rotation: tilt, duration: 0.5, ease: "power1.inOut" },
+            t
+          );
+        } else if (fx === "fade") {
+          tl.fromTo(el, { opacity: 0, rotation: tilt }, { opacity: 1, rotation: tilt, duration: 0.6, ease: "power1.out" }, t);
+        } else {
+          // card: gentle rise-and-settle
+          tl.fromTo(el,
+            { opacity: 0, y: 28, rotation: tilt },
+            { opacity: 1, y: 0, rotation: tilt, duration: 0.5, ease: "power2.out" },
+            t
+          );
+        }
+      });
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
