@@ -1,5 +1,8 @@
 # Model-Distillery
 
+[![▶ whiteboard explainer video · 6m06s](https://img.shields.io/badge/%E2%96%B6_whiteboard_explainer-6m06s-E8B44A?style=flat-square&logo=googleplay&logoColor=white)](brag-output/brag.mp4)
+
+
 **End-to-end model distillation pipeline**: synthetic SFT data generation → quality filtering → QLoRA training (with a logit-KD reference) → quantization → teacher-vs-student evaluation → serving configs.
 
 The repo is built around one uncomfortable production truth: **a frontier teacher is 20–50x more expensive per token than a small model you own, and that gap is the entire business case for distillation.** Everything here exists to make the distillation decision *measurable* — data quality gates you can audit, a training plan you can cost before you rent a GPU, and a bench that tells you exactly how much quality you traded away and when the investment pays back.
